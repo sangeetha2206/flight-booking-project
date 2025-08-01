@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Booking System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            max-width: 300px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        button.loading {
+            background: #95a5a6;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        #output {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            white-space: pre-wrap;
+        }
+    </style>
+    <script>
+        const apiUrl = '/api/bookings';
+        const validStatuses = ["Confirmed", "Not confirmed", "Completed"];
+
+        // Function to create a booking
+        async function createBooking() {
+    const name = document.getElementById('name').value.trim();
+    const from = document.getElementById('from').value.trim();
+    const destination = document.getElementById('destination').value.trim();
+
+    if (!name || !from || !destination) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    const btn = event.target;
+    btn.classList.add('loading');
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify([{ name, from, destination }]), // Ensure this is an array
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            console.log('Booking created:', data);
+            alert('✅ Booking created successfully!');
+            // Clear form inputs
+            document.getElementById('name').value = '';
+            document.getElementById('from').value = '';
+            document.getElementById('destination').value = '';
+        } else {
+            alert('Error creating booking: ' + (data.error || response.statusText));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while creating the booking.');
+    } finally {
+        btn.classList.remove('loading');
+    }
+}
+
+        // Function to get pending bookings
+        async function getPendingBookings() {
+            try {
+                const response = await fetch(apiUrl + '/pending');
+                const data = await response.json();
+                const output = document.getElementById('output');
+                if (data.length === 0) {
+                    output.innerHTML = '<div class="booking">No pending bookings found</div>';
+                } else {
+                    output.innerHTML = data.map(booking => 
+                        `<div class="booking" style="margin-bottom:15px;padding:10px;border-bottom:1px solid #eee">
+                            <h3 style="margin-top:0">${booking.name}</h3>
+                            <p><strong>From:</strong> ${booking.from} → <strong>Destination:</strong> ${booking.destination}</p>
+                            ${booking.bookingStatus ? `<p><strong>Status:</strong> ${booking.bookingStatus}</p>` : ''}
+                        </div>`
+                    ).join('');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while fetching pending bookings.');
+            }
+        }
+
+        // Function to update booking status
+        async function updateBookingStatus() {
+            const name = document.getElementById('updateName').value.trim();
+            const newStatus = document.getElementById('newStatus').value.trim();
+            if (!validStatuses.includes(newStatus)) {
+                alert(`❌ Invalid status! Please use one of: ${validStatuses.join(', ')}`);
+                return;
+            }
+            if (!name || !newStatus) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(apiUrl + '/status', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, newStatus }),
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    console.log('Booking status updated:', data);
+                    alert('Booking status updated successfully!');
+                } else {
+                    alert('Error updating status: ' + (data.error || response.statusText));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while updating the booking status.');
+            }
+        }
+
+        // Function to delete completed bookings
+        async function deleteCompletedBookings() {
+            try {
+                const response = await fetch(apiUrl + '/completed', {
+                    method: 'DELETE',
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    console.log('Completed bookings deleted:', data);
+                    alert('Completed bookings deleted successfully!');
+                } else {
+                    alert('Error deleting completed bookings: ' + (data.error || response.statusText));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while deleting completed bookings.');
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Flight Booking API</h1>
+
+    <h2>Create Booking</h2>
+    <input type="text" id="name" placeholder="Name" required>
+    <input type="text" id="from" placeholder="From" required>
+    <input type="text" id="destination" placeholder="Destination" required>
+    <button onclick="createBooking()">Create Booking</button>
+
+    <h2>Get Pending Bookings</h2>
+    <button onclick="getPendingBookings()">Get Pending Bookings</button>
+    <div id="output"></div>
+
+    <h2>Update Booking Status</h2>
+    <input type="text" id="updateName" placeholder="Name" required>
+    <input type="text" id="newStatus" placeholder="New Status (Confirmed/Not confirmed/Completed)" required>
+    <button onclick="updateBookingStatus()">Update Status</button>
+
+    <h2>Delete Completed Bookings</h2>
+    <button onclick="deleteCompletedBookings()">Delete Completed Bookings</button>
+</body>
+</html>
